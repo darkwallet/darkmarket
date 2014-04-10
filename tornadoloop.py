@@ -7,12 +7,13 @@ from zmq.eventloop import ioloop, zmqstream
 import zmq
 ioloop.install()
 
-from p2p import TransportLayer
+from crypto2crypto import CryptoTransportLayer
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.write("Hello, world")
+
 
 class MarketApplication(tornado.web.Application):
  
@@ -22,7 +23,7 @@ class MarketApplication(tornado.web.Application):
             (r"/foo", MainHandler),
         ]
         tornado.web.Application.__init__(self, handlers, **settings)
-        self.transport = TransportLayer()
+        self.transport = CryptoTransportLayer(12345)
         self.transport.join_network()
 
 
@@ -38,5 +39,4 @@ if __name__ == "__main__":
             port += 1
     print "started user port on %s" % port
     tornado.ioloop.IOLoop.instance().start()
-
 

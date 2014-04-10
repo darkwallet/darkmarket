@@ -1,6 +1,8 @@
 import sys
 import json
 
+import pyelliptic as ec
+
 from zmq.eventloop import ioloop, zmqstream
 import zmq
 ioloop.install()
@@ -25,7 +27,6 @@ class PeerConnection(object):
         self._stream = zmqstream.ZMQStream(self._socket)
         self._stream.on_recv(self.on_message)
         self._stream.set_close_callback(self.closed)
-        self.send({'type': 'hello', 'uri': 'tcp://%s:12345' % MY_IP})
 
     def send(self, data):
         self.send_raw(json.dumps(data))
@@ -44,38 +45,42 @@ class TransportLayer(object):
     def __init__(self, port=DEFAULT_PORT):
         self._peers = {}
         self._port = port
+        self._uri = 'tcp://%s:%s' % (MY_IP, self._port)
+
+    def get_profile(self):
+        return {'type': 'hello', 'uri': 'tcp://%s:12345' % MY_IP}
 
     def join_network(self):
         self.listen()
         if SEED_URI:
-            self.init_peer(SEED_URI)
+            self.init_peer({'uri': SEED_URI})
+            self.send(self.get_profile())
 
     def listen(self):
-        print "init server"
+        print "init server", MY_IP, self._port
         self._ctx = zmq.Context()
         self._socket = self._ctx.socket(zmq.REP)
-        self._socket.bind('tcp://'+MY_IP+':%s' % self._port)
+        self._socket.bind(self._uri)
         self._stream = zmqstream.ZMQStream(self._socket)
         self._stream.on_recv(self.on_message)
 
-    def init_peer(self, uri):
-        print "init peer", uri
+    def init_peer(self, msg):
+        uri = msg['uri']
+        print "init peer", msg
         if not uri in self._peers:
             self._peers[uri] = PeerConnection(uri)
 
     def send(self, data):
         print " * sending", data
         serialized = json.dumps(data)
-        for peer in self._peers.keys():
+        for peer in self._peers.values():
             try:
                 peer.send_raw(serialized)
             except:
                 print "error sending over peer!"
 
-    def on_opening(self, uri):
-        self.init_peer(uri)
-
     def on_message(self, serialized):
+        print "connected"
         try:
             msg = json.loads(serialized[0])
         except:
@@ -84,6 +89,6 @@ class TransportLayer(object):
 
         msg_type = msg.get('type')
         if msg_type == 'hello' and msg.get('uri'):
-            self.on_opening(msg.get('uri'))
+            self.init_peer(msg)
 
 
