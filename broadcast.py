@@ -24,9 +24,10 @@ def eligius_pushtx(tx):
         quote = re.findall('"[^"]*"',string)[0]
         if len(quote) >= 5: return quote[1:-1]
 
-def broadcast(self, tx):
+def broadcast(tx):
     raw_tx = tx.serialize().encode("hex")
     print "Tx data:", raw_tx
-    eligius_pushtx(raw_tx)
-    bci_pushtx(raw_tx)
+    print "TEMP DISABLED BROADCAST"
+    #eligius_pushtx(raw_tx)
+    #bci_pushtx(raw_tx)
 

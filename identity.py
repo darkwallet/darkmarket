@@ -23,8 +23,10 @@ class Blockchain:
             self.process(block)
 
     def process(self, block):
+        print "Processing block..."
         if not block.verify():
             # Invalid block so reject it.
+            print >> sys.stderr, "Rejecting invalid block."
             return
         # check hash of keys + values matches root hash
         # fetch tx height/index associated with block
@@ -103,8 +105,10 @@ def main(argv):
     chain = Blockchain()
     pool = Pool(chain)
     zmq_poller = ZmqPoller(pool)
-    lc = LoopingCall(zmq_poller.update)
-    lc.start(0.1)
+    lc_zmq = LoopingCall(zmq_poller.update)
+    lc_zmq.start(0.1)
+    lc_chain = LoopingCall(chain.update)
+    lc_chain.start(6)
     reactor.run()
     return
 
