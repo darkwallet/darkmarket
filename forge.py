@@ -5,10 +5,14 @@ secret = "8cd252b8a48abb98aed387b204a417ae38e4a928b0e997654bdd742dd044659c".deco
 address = "1PRBVdCHoPPD3bz8sCZRTm6iAtuoqFctvx"
 client = None
 
+def hash_transaction(tx):
+    return obelisk.Hash(tx.serialize())[::-1]
+
 class HistoryCallback:
 
-    def __init__(self, root_hash):
+    def __init__(self, root_hash, finished_cb):
         self.root_hash = root_hash
+        self.finished_cb = finished_cb
 
     def fetched(self, ec, history):
         if ec is not None:
@@ -16,14 +20,15 @@ class HistoryCallback:
             return
         unspent_rows = [row[:4] for row in history if row[4] is None]
         unspent = build_output_info_list(unspent_rows)
-        build_actual_tx(unspent, self.root_hash)
+        tx_hash = build_actual_tx(unspent, self.root_hash)
+        self.finished_cb(tx_hash)
 
-def send_root_hash(root_hash):
+def send_root_hash(root_hash, finished_cb):
     global client
     if client is None:
         client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
     print "sending", root_hash.encode("hex")
-    cb = HistoryCallback(root_hash)
+    cb = HistoryCallback(root_hash, finished_cb)
     client.fetch_history(address, cb.fetched)
 
 def build_actual_tx(unspent, root_hash):
@@ -41,6 +46,8 @@ def build_actual_tx(unspent, root_hash):
     for i, output in enumerate(optimal_outputs.points):
         obelisk.sign_transaction_input(tx, i, key)
     broadcast.broadcast(tx)
+    tx_hash = hash_transaction(tx)
+    return tx_hash
 
 def add_input(tx, prevout):
     input = obelisk.TxIn()
