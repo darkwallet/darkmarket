@@ -127,7 +127,7 @@ class TransportLayer(object):
     def on_message(self, msg):
         # here goes the application callbacks
         # we get a "clean" msg which is a dict holding whatever
-        self.trigger_callbacks(msg.get('type'))
+        self.trigger_callbacks(msg.get('type'), msg)
 
     def on_raw_message(self, serialized):
         self.log("connected " +str(len(serialized)))

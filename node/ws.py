@@ -1,14 +1,61 @@
 import tornado.websocket
 import threading
 import logging
+import json
+import tornado.ioloop
+import random
 
 class ProtocolHandler:
-    def __init__(self):
+    def __init__(self, transport, node, handler):
+        self.node = node
+        self._transport = transport
+        self._handler = handler
+
+        # register on transport events to forward..
+        transport.add_callback('peer', self.on_node_peer)
+        transport.add_callback('all', self.on_node_message)
+
+        # handlers from events coming from websocket, we shouldnt need this
         self._handlers = {
-            "query_seller":  ObJsonChanPost,
-            "test":          ObJsonChanList,
+            "test":          self.client_test
         }
 
+    def send_opening(self):
+        message = {
+            'type': 'myself',
+            'pubkey': self._transport._myself.get_pubkey().encode('hex'),
+            'peers': self._transport._peers.keys(),
+            'reputation': self.node.reputation.get_my_reputation()
+        }
+        self.queue_message(None, message)
+
+    def client_test(self, *args):
+        self._transport.log("testing from client")
+
+    # messages coming from "the market"
+    def on_node_peer(self, peer):
+        response = {'type': 'peer', 'pubkey': peer._pub.encode('hex'), 'uri': peer._address}
+        self.queue_message(None, response)
+
+    def on_node_message(self, *args):
+        first = args[0]
+        if isinstance(first, dict):
+            self.queue_message(None, first)
+        else:
+            self._transport.log("can't format")
+
+    # send a message
+    def queue_message(self, error, result):
+        assert error is None or type(error) == str
+        response = {
+            "id": random.randint(0, 1000000),
+            "result": result
+        }
+        if error:
+            response["error"] = error
+        self._handler.queue_response(response)
+
+    # handler a request
     def handle_request(self, socket_handler, request):
         command = request["command"]
         if command not in self._handlers:
@@ -28,7 +75,6 @@ class ProtocolHandler:
         return True
 
 
-
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     # Set of WebsocketHandler
@@ -36,21 +82,21 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     # Protects listeners
     listen_lock = threading.Lock()
 
-    def initialize(self, node):
-        self._app_handler = self #self.application.protocol_handler
+    def initialize(self, transport, node):
+        transport.log("initialize websockethandler")
+        self._app_handler = ProtocolHandler(transport, node, self)
         self.node = node
-
-    def handle_request(self, *args):
-        print "request", args
+        self._transport = transport
 
     def open(self):
-        print "open"
+        self._transport.log("websocket open")
+        self._app_handler.send_opening()
         with WebSocketHandler.listen_lock:
             self.listeners.add(self)
         self._connected = True
 
     def on_close(self):
-        print "close"
+        self._transport.log("websocket closed")
         disconnect_msg = {'command': 'disconnect_client', 'id': 0, 'params': []}
         self._connected = False
         self._app_handler.handle_request(self, disconnect_msg)
@@ -73,3 +119,23 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
         if self._app_handler.handle_request(self, request):
             return
+
+    def _send_response(self, response):
+        if self.ws_connection:
+            self.write_message(json.dumps(response))
+        #try:
+        #    self.write_message(json.dumps(response))
+        #except tornado.websocket.WebSocketClosedError:
+        #    logging.warning("Dropping response to closed socket: %s",
+        #       response, exc_info=True)
+
+    def queue_response(self, response):
+        ioloop = tornado.ioloop.IOLoop.instance()
+        def send_response(*args):
+            self._send_response(response)
+        try:
+            # calling write_message or the socket is not thread safe
+            ioloop.add_callback(send_response)
+        except:
+            logging.error("Error adding callback", exc_info=True)
+

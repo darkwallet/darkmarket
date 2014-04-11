@@ -9,15 +9,12 @@ ioloop.install()
 
 from crypto2crypto import CryptoTransportLayer
 from market import Market
-from ws import WebSocketHandler
+from ws import WebSocketHandler, ProtocolHandler
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        f = open('html/index.html')
-        data = f.read()
-        f.close()
-        self.write(data)
+        self.redirect("/html/index.html")
 
 class NickHandler(tornado.web.RequestHandler):
     def initialize(self, node):
@@ -42,12 +39,15 @@ class MarketApplication(tornado.web.Application):
         settings = dict(debug=True)
         self.transport = CryptoTransportLayer(12345)
         self.transport.join_network()
+        #self.protocol_handler = ProtocolHandler(self.transport)
         self.market = Market(self.transport)
         handlers = [
+            (r"/", MainHandler),
             (r"/main", MainHandler),
             (r"/nick/(.*)", NickHandler, dict(node=self.market)),
+            (r"/html/(.*)", tornado.web.StaticFileHandler, {'path': './html'}),
             (r"/mail", MessageHandler, dict(node=self.market)),
-            (r"/ws", WebSocketHandler, dict(node=self.market))
+            (r"/ws", WebSocketHandler, dict(transport=self.transport, node=self.market))
         ]
         tornado.web.Application.__init__(self, handlers, **settings)
 

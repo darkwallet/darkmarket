@@ -78,8 +78,7 @@ class CryptoTransportLayer(TransportLayer):
                 msg = json.loads(self._myself.decrypt(serialized))
                 self.log("decrypted [%s]" % msg.get('type', 'unknown'))
             except:
-                #self.log("incorrect msg ! %s..." % serialized)
-                self.log("incorrect msg !")
+                self.log("incorrect msg ! %s..." % self._myself.decrypt(serialized))
                 traceback.print_exc()
                 return
 
