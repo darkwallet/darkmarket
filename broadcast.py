@@ -2,6 +2,8 @@ import obelisk
 import sys
 import threading
 import urllib2, re, random
+import websocket
+import json
 
 # Makes a request to a given URL (first argument) and optional params (second argument)
 def make_request(*args):
@@ -24,10 +26,23 @@ def eligius_pushtx(tx):
         quote = re.findall('"[^"]*"',string)[0]
         if len(quote) >= 5: return quote[1:-1]
 
+def gateway_broadcast(tx):
+    ws = websocket.create_connection("ws://gateway.unsystem.net:8888/")
+    request = {"id": 110, "command": "broadcast_transaction", "params": [tx]}
+    ws.send(json.dumps(request))
+    result =  ws.recv()
+    response = json.loads(result)
+    if response["error"] is not None:
+        print >> sys.stderr, "Error broadcasting to gateway:", response["error"]
+        return
+    print "Sent"
+    ws.close()
+
 def broadcast(tx):
     raw_tx = tx.serialize().encode("hex")
     print "Tx data:", raw_tx
-    print "TEMP DISABLED BROADCAST"
+    #print "TEMP DISABLED BROADCAST"
     #eligius_pushtx(raw_tx)
+    #gateway_broadcast(raw_tx)
     #bci_pushtx(raw_tx)
 

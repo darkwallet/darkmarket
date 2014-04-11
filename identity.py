@@ -12,6 +12,8 @@ class Blockchain:
     def __init__(self):
         self.blocks = []
         self.processor = []
+        self.registry = {}
+        self.client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
 
     def accept(self, block):
         self.processor.append(block)
@@ -23,20 +25,40 @@ class Blockchain:
             self.process(block)
 
     def process(self, block):
-        print "Processing block...", block
         if not block.complete:
             self.postpone(block)
             return
+        print "Processing block...", block
+        # check hash of keys + values matches root hash
         if not block.verify():
             # Invalid block so reject it.
             print >> sys.stderr, "Rejecting invalid block."
             return
-        # check hash of keys + values matches root hash
+        # fetch tx to check it's valid
+        assert block.header.tx_hash
+        def tx_fetched(ec, tx):
+            if ec is not None:
+                print >> sys.stderr, "Block doesn't exist (yet)."
+                self.postpone(block)
+                return
+            self._tx_fetched(block, tx)
+        self.client.fetch_transaction(block.header.tx_hash, tx_fetched)
+
+    def _tx_fetched(self, block, tx):
+        # Continuing on with block validation...
+        tx = obelisk.Transaction.deserialize(tx)
+        if len(tx.outputs) != 2:
+            print >> sys.stderr, "Tx outputs not 2, incorrect."
+            return
+        if len(tx.outputs[0].script) != 22:
+            print >> sys.stderr, "Incorrect output script size."
+            return
+        if tx.outputs[0].script[2:] == "\x6a\x14":
+            print >> sys.stderr, "OP_RETURN + push"
+            return
         # fetch tx height/index associated with block
         # compare to list
         # remove all items higher from blocks and kv map
-        #
-        pass
 
     def postpone(self, block):
         # readd for later processing
@@ -90,7 +112,7 @@ class Block:
         # register block in the bitcoin blockchain
         root_hash = self.calculate_root_hash()
         # create tx with root_hash as output
-        self.header = BlockHeader(None, root_hash)
+        self.header = BlockHeader("", root_hash)
         forge.send_root_hash(root_hash, self._registered)
 
     def _registered(self, tx_hash):
