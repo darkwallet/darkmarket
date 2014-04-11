@@ -4,6 +4,7 @@ import hashlib
 import obelisk
 import broadcast
 import forge
+import shelve
 from twisted.internet import reactor
 from twisted.internet.task import LoopingCall
 
@@ -14,6 +15,12 @@ class Blockchain:
         self.processor = []
         self.registry = {}
         self.client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
+        db = shelve.open("blockchain")
+        try:
+            self.blocks = db["chain"]
+        except KeyError:
+            pass
+        db.close()
 
     def accept(self, block):
         self.processor.append(block)
@@ -28,6 +35,11 @@ class Blockchain:
         if not block.complete:
             self.postpone(block)
             return
+        #### DEBUG ###################
+        db = shelve.open("blockchain")
+        db["newest"] = block
+        db.close()
+        ##############################
         print "Processing block...", block
         # check hash of keys + values matches root hash
         if not block.verify():
@@ -59,6 +71,10 @@ class Blockchain:
         # fetch tx height/index associated with block
         # compare to list
         # remove all items higher from blocks and kv map
+        # add to blockchain
+        db = shelve.open("blockchain")
+        db["chain"] = self.blocks
+        db.close()
 
     def postpone(self, block):
         # readd for later processing
@@ -141,7 +157,8 @@ class Block:
         return "<Block tx_hash=%s root_hash=%s prev=%s txs=%s>" % (
             self.header.tx_hash.encode("hex") if self.header else None,
             self.header.root_hash.encode("hex") if self.header else None,
-            self.prev_hash.encode("hex"), self.txs)
+            self.prev_hash.encode("hex"),
+            [(k, v.encode("hex")) for k, v in self.txs])
 
 class ZmqPoller:
 
