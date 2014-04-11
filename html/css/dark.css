@@ -52,6 +52,10 @@ body {
   margin-left: auto;
 }
 
+.panel-body {
+  background: #444;
+}
+
 /* Padding for spacing */
 .inner {
   padding: 30px;

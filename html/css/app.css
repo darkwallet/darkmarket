@@ -1,6 +1,6 @@
 .masthead {
-  position: relative;
-  margin-bottom: 100px;
+  position: fixed;
+  margin-bottom: 50px;
   background: #333333;
 }
 .masthead .masthead-brand img {
@@ -13,11 +13,17 @@
   text-align: center;
 }
 .search-area {
+  margin: 200px 0 0 0;
+}
+.search-area #search {
+  margin-top: 50px;
   background: black;
   border-color: #444;
 }
+.main-app {
+  margin: 0 0 600px 0;
+}
 .mastfoot {
-  position: relative;
   background: #333333;
 }
 @media (min-width: 992px) {

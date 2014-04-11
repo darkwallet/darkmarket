@@ -31,6 +31,7 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
   $scope.page = false
   $scope.shouts = [];
   $scope.newShout = ""
+  $scope.searching = ""
   $scope.currentReviews = []
   $scope.myReviews = []
   $scope.createShout = function() {
@@ -66,8 +67,14 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
       case 'shout':
          $scope.parse_shout(msg)
          break;
+      case 'order':
+         $scope.parse_order(msg)
+         break;
       case 'reputation':
          $scope.parse_reputation(msg)
+         break;
+      case 'response_pubkey':
+         $scope.parse_response_pubkey(msg)
          break;
       default:
          console.log("unhandled message!",msg)
@@ -94,10 +101,42 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
     }
   }
 
+  $scope.parse_order = function(msg) {
+      if ($scope.orders.hasOwnProperty(msg.id)) {
+          console.log("updating order!")
+          $scope.orders[msg.id].state = msg.state
+          $scope.orders[msg.id].tx = msg.tx
+          $scope.orders[msg.id].escrows = msg.escrows
+          $scope.orders[msg.id].address = msg.address
+      } else {
+          $scope.orders[msg.id] = msg;
+      }
+      if (!$scope.$$phase) {
+         $scope.$apply();
+      }
+  }
+
+  $scope.parse_response_pubkey = function(msg) {
+      var pubkey = msg.pubkey;
+      var nickname = msg.nickname;
+      $scope.peers.forEach(function(peer) {
+          if (peer.pubkey == pubkey) {
+             // this peer!!
+             peer.nickname = msg.nickname;
+             if ($scope.searching == msg.nickname) {
+                 $scope.queryShop(peer)
+             }
+          }
+      });
+      if (!$scope.$$phase) {
+         $scope.$apply();
+      }
+  }
+
   // Peer information has arrived
   $scope.parse_reputation = function(msg) {
     msg.reviews.forEach(function(review) {
-        add_review(msg.pubkey, review);
+        add_review(review.subject, review);
     });
     if (!$scope.$$phase) {
        $scope.$apply();
@@ -112,6 +151,8 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
     }
     $scope.currentReviews = $scope.reviews[msg.pubkey]
     $scope.page = msg
+    var contentDiv = document.getElementById('page-content')
+    contentDiv.innerHTML = msg.text;
     if (!$scope.$$phase) {
        $scope.$apply();
     }
@@ -129,6 +170,9 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
   $scope.addReview = function() {
      var query = {'type': 'review', 'pubkey': $scope.page.pubkey, 'text': $scope.review.text, 'rating': parseInt($scope.review.rating)}
      socket.send('review', query)
+
+     // store in appropriate format (its different than push format :P)
+     add_review($scope.page.pubkey, {type: 'review', 'pubkey': $scope.myself.pubkey, 'subject': $scope.page.pubkey, 'rating': query.rating, text: query.text})
 
      $scope.review.rating = 5;
      $scope.review.text = '';
@@ -157,8 +201,38 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
   $scope.search = ""
   $scope.searchNickname = function() {
      var query = {'type': 'search', 'text': $scope.search };
+     $scope.searching = $scope.search;
      socket.send('search', query)
      $scope.search = ""
+  }
+
+  $scope.newOrder = {text:'', tx: ''}
+  $scope.orders = {}
+  $scope.createOrder = function() {
+      $scope.creatingOrder = false;
+      var newOrder = {
+          'text': $scope.newOrder.text,
+          'state': 'new',
+          'buyer': $scope.myself.pubkey,
+          'seller': $scope.page.pubkey
+      }
+      $scope.newOrder.text = '';
+     //  $scope.orders.push(newOrder) no id...
+      socket.send('order', newOrder);
+  }
+  $scope.payOrder = function(order) {
+      order.state = 'payed'
+      order.tx = $scope.newOrder.tx;
+      $scope.newOrder.tx = '';
+      socket.send('order', order);
+  }
+  $scope.receiveOrder = function(order) {
+      order.state = 'received'
+      socket.send('order', order);
+  }
+  $scope.sendOrder = function(order) {
+      order.state = 'sent'
+      socket.send('order', order);
   }
 
 }])

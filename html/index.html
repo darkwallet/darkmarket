@@ -18,7 +18,7 @@
 
 
 <!-- MOVE APP INSIDE THIS AREA -->
-    <div class="site-wrapper">
+    <div class="site-wrapper" ng-show="!started">
 
       <div class="site-wrapper-inner">
 
@@ -43,7 +43,7 @@
 
             <p class="lead">Here you can share your creations as freely as you can share an idea.</p>
             <p class="lead">
-              <a href="#" class="btn btn-lg btn-default">Create Seller Page</a>
+              <a ng-show="!started" ng-click="started=true" class="btn btn-lg btn-default">Create Seller Page</a>
             </p>
           </div>
 
@@ -62,7 +62,7 @@
 <!-- /MOVE APP INSIDE THIS AREA -->
 
 
-
+<div ng-show="started">
   <div class="search-area panel panel-default">
    <form class="form-inline panel-body">
     <label class="sr-only" for="search">Search:</label>
@@ -75,7 +75,7 @@
     <h3>peers</h3>
     <div></div>
     <div ng-repeat="peer in peers">
-            <identicon icon-size="38" hash="peer.pubkey" title="{{peer.pubkey}}"></identicon><span title="{{peer.pubkey}}">{{peer.uri}} {{peer.pubkey?peer.pubkey.slice(0,16):'unknown'}}... </span><button ng-click="queryShop(peer)" class="btn btn-default navbar-btn">QueryShop</button></div>
+            <identicon icon-size="38" hash="peer.pubkey" title="{{peer.pubkey}}"></identicon><span title="{{peer.pubkey}}">{{peer.uri}} {{peer.nickname ? peer.nickname : peer.pubkey?peer.pubkey.slice(0,16):'unknown'}}... </span><button ng-click="queryShop(peer)" class="btn btn-default navbar-btn">QueryShop</button></div>
   </div>
   <div class="col-sm-6">
     <h3>myself</h3>
@@ -97,14 +97,47 @@
         <a class="btn btn-primary navbar-btn" ng-click="addReview()" type="submit">Submit</a>
         <a class="btn btn-warning navbar-btn" ng-click="showReviewForm=false" type="cancel">Cancel</a>
       </form>
+      <!-- Buy -->
+      <button ng-click="creatingOrder=true" class="btn btn-default navbar-btn">Buy</button>
+      <form ng-show="creatingOrder">
+         Text: <input type="text" ng-model="newOrder.text" placeholder="Friendly message"></input>
+         <a class="btn btn-primary navbar-btn" ng-click="createOrder()" type="submit">Order</a>
+         <a class="btn btn-warning navbar-btn" ng-click="creatingOrder=false" type="cancel">Cancel</a>
+       </form>
+
+
       </div>
       <div class="panel-body" ng-show="page">
-        <div>{{page.text}}</div>
+        <div id="page-content"></div>
+        <h3>Reviews</h3>
+        <div ng-repeat="review in currentReviews">{{review.rating}} {{review.text}} {{review.pubkey.slice(0,16)}}...</div>
+
         <div title="page.pubkey"><h2>Owner:</h2> {{page.pubkey.slice(0,32)}}...</div>
         <div title="{{page.signature}}"><h2>Signature</h2> {{page.signature.slice(0,32)}}...</div>
       </div>
-      <h3>Reviews</h3>
-      <div ng-repeat="review in currentReviews">{{review.rating}} {{review.text}} {{review.pubkey.slice(0,16)}}...</div>
+    <h3 ng-show="Object.keys(orders).length">Orders</h3>
+    <!-- Orders -->
+    <div ng-repeat="(orderId, order) in orders" ng-show="order.seller == page.pubkey">
+      {{order.id}} {{order.text}}
+      <!-- Buy -->
+      <!-- Pay -->
+      <form ng-show="order && order.state == 'accepted' && order.buyer == myself.pubkey">
+        Pay to: {{order.address}}
+        Tx: <input type="text" ng-model="newOrder.tx" placeholder="Transaction with the spend"></input>
+        <a class="btn btn-primary navbar-btn" ng-click="payOrder(order)" type="submit">Payed</a>
+        <a class="btn btn-warning navbar-btn" ng-click="showReviewForm=false" type="cancel">Cancel</a>
+      </form>
+      <!-- Sent -->
+      <form ng-show="order && order.state == 'payed' && order.seller == myself.pubkey">
+        <a  class="btn btn-primary navbar-btn" ng-click="sendOrder(order)" type="submit">Sent</a>
+      </form>
+      <!-- Received -->
+      <form ng-show="order && order.state == 'sent' && order.buyer == myself.pubkey">
+        <a class="btn btn-primary navbar-btn" ng-click="receiveOrder(order)" type="submit">Received</a>
+      </form>
+
+
+    </div>
     </div>
   </div>
   <div class="col-sm-4">
@@ -117,6 +150,7 @@
       </form>
     </div>
   </div>
+</div>
 </div>
 
 </div> <!-- container -->
