@@ -9,7 +9,7 @@
 <script src="/html/js/app.js"></script>
 <link href="/html/css/bootstrap.min.css" rel="stylesheet">
 <link href="/html/css/dark.css" rel="stylesheet">
-<link href="/html/css/app.css" rel="stylesheet">
+<link href="/html/less/css/app.css" rel="stylesheet">
 </head>
 <body ng-controller="Market">
 <div ng-show="warningMessage" class="alert alert-warning"></div>
@@ -31,8 +31,8 @@
               </h3>
               <ul class="nav masthead-nav">
                 <li class="active"><a href="#">Home</a></li>
-                <li><a href="#">Search</a></li>
-                <li><a href="#">Sell</a></li>
+                <li><a ng-click="started=true">Search</a></li>
+                <li><a ng-click="started=true">Sell</a></li>
               </ul>
             </div>
           </div>
