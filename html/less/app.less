@@ -1,4 +1,28 @@
 @bg-dark: #333;
+@bg-green-bright: #ccff00;
+
+h1 {
+	font-size: 42px;
+	font-weight: 100;
+}
+h3 {
+	margin-bottom: 25px;
+	padding-left: 10px;
+	text-align: left;
+	color: #aaa;
+	font-size: 32px;
+	font-weight: 100;
+	border-left: 3px solid @bg-green-bright;
+}
+h3.masthead-brand {
+	border: none;
+
+}
+
+h4 {
+	margin-top: 0px;
+	color: @bg-green-bright;
+}
 
 .masthead {
 	position: fixed;
@@ -14,7 +38,6 @@
 }
 
 .cover-container {
-	padding-top: 100px;
 }
 
 #mascot {
@@ -26,20 +49,69 @@
 
 
 .search-area {
-	margin: 200px 0 0 0;
-	
-	.search-logo {
+	margin: 25px 0 0 0;
+	border-color: #555;	
 
+	.search-logo {
+		margin-bottom: 65px;
 	}
-	#search {
-		margin-top: 50px;
-		background: black;
-		border-color: #444;	
+
+	.search-form {
+		background: @bg-dark;
+		border-color: #555;	
+	}
+	form.search-form {
+		margin-bottom: 0;
 	}
  }
 
-.main-app {
-	margin: 0 0 600px 0;
+.peers-area {
+	text-align: left;
+}
+
+.anon-profile-area {
+	text-align: left
+}
+
+.reviews-area {
+	margin-top: 20px;
+	padding: 10px;
+	text-align: left;
+	border: 1px solid #555;
+	border-radius: 5px;
+}
+
+.page {
+
+	.seller-content-heading {
+		background: black;
+		color: white;
+	}
+
+	.seller-content-area {
+		.page-content {
+
+		}
+		.page-details {
+			text-align: left;
+		}
+	}
+}
+
+
+
+
+.shoutbox-area {
+	
+	.shout-input {
+		width: 100%;
+	}
+	.shout-chats {
+		padding: 10px;
+		text-align: left;
+		color: #ccc;
+		border-left: 3px solid @bg-green-bright;
+	}
 }
 
 
@@ -55,6 +127,6 @@
   .masthead,
   .mastfoot,
   .cover-container {
-    width: 90%;
+    // width: 90%;
   }
 }

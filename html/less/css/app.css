@@ -1,0 +1,80 @@
+h1 {
+  font-size: 42px;
+  font-weight: 100;
+}
+h3 {
+  margin-bottom: 25px;
+  padding-left: 10px;
+  text-align: left;
+  color: #aaa;
+  font-size: 32px;
+  font-weight: 100;
+  border-left: 3px solid #ccff00;
+}
+h3.masthead-brand {
+  border: none;
+}
+h4 {
+  margin-top: 0px;
+  color: #ccff00;
+}
+.masthead {
+  position: fixed;
+  margin-bottom: 50px;
+  background: #333333;
+}
+.masthead .masthead-brand img {
+  width: 250px;
+}
+#mascot {
+  width: 350px;
+  height: 350px;
+  margin: 0 auto;
+  text-align: center;
+}
+.search-area {
+  margin: 25px 0 0 0;
+  border-color: #555;
+}
+.search-area .search-logo {
+  margin-bottom: 65px;
+}
+.search-area .search-form {
+  background: #333333;
+  border-color: #555;
+}
+.search-area form.search-form {
+  margin-bottom: 0;
+}
+.peers-area {
+  text-align: left;
+}
+.anon-profile-area {
+  text-align: left;
+}
+.reviews-area {
+  margin-top: 20px;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #555;
+  border-radius: 5px;
+}
+.page .seller-content-heading {
+  background: black;
+  color: white;
+}
+.page .seller-content-area .page-details {
+  text-align: left;
+}
+.shoutbox-area .shout-input {
+  width: 100%;
+}
+.shoutbox-area .shout-chats {
+  padding: 10px;
+  text-align: left;
+  color: #ccc;
+  border-left: 3px solid #ccff00;
+}
+.mastfoot {
+  background: #333333;
+}
