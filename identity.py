@@ -19,8 +19,9 @@ class Blockchain:
             self.blocks = db["chain"]
         except KeyError:
             pass
-        self.accept(db["newest"])
         db.close()
+        self._regenerate_lookup()
+        print "Starting blockchain:", self.blocks
 
     def accept(self, block):
         self.processor.append(block)
@@ -48,12 +49,12 @@ class Blockchain:
                 print >> sys.stderr, "Block doesn't exist (yet)."
                 self.postpone(block)
                 return
-            self._tx_fetched(block, tx)
+            self._tx_fetched(block, tx, block.header.tx_hash)
         if forge.client is None:
             forge.client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
         forge.client.fetch_transaction(block.header.tx_hash, tx_fetched)
 
-    def _tx_fetched(self, block, tx):
+    def _tx_fetched(self, block, tx, tx_hash):
         # Continuing on with block validation...
         tx = obelisk.Transaction.deserialize(tx)
         if len(tx.outputs) != 2:
@@ -62,18 +63,43 @@ class Blockchain:
         if len(tx.outputs[0].script) != 22:
             print >> sys.stderr, "Incorrect output script size."
             return
-        if tx.outputs[0].script[2:] == "\x6a\x14":
+        if tx.outputs[0].script[:2] != "\x6a\x14":
             print >> sys.stderr, "OP_RETURN + push"
             return
+        root_hash = tx.outputs[0].script[2:]
+        if block.header.root_hash != root_hash:
+            print >> sys.stderr, "Non matching root hash with tx."
+            return
+        def txidx_fetched(ec, height, offset):
+            if ec is not None:
+                print >> sys.stderr, "Dodgy error, couldn't find tx off details."
+                return
+            self._txidx_fetched(block, height, offset)
         # fetch tx height/index associated with block
-        # compare to list
-        # remove all items higher from blocks and kv map
+        forge.client.fetch_transaction_index(tx_hash, txidx_fetched)
+
+    def _txidx_fetched(self, block, height, offset):
+        # Continue on... Block seems fine...
+        # Check prev hash is in the list.
+        if not self._block_hash_exists(block.prev_hash):
+            print >> sys.stderr, "Previous block does not exist. Dropping block."
+            return
+        block.priority = height * 10**8 + offset
+        self.blocks.append(block)
+        self.blocks.sort(key=lambda b: b.priority)
+        self._regenerate_lookup()
         # add to blockchain
         print "Done!"
-        return
         db = shelve.open("blockchain")
         db["chain"] = self.blocks
         db.close()
+
+    def _regenerate_lookup(self):
+        for block in self.blocks:
+            for name, key in block.txs:
+                if name not in self.registry:
+                    print "Adding:", name
+                    self.registry[name] = key
 
     def postpone(self, block):
         # readd for later processing
@@ -88,6 +114,17 @@ class Blockchain:
         if not self.blocks:
             return self.genesis_hash
         return self.blocks[-1].header.tx_hash
+
+    def _block_hash_exists(self, block_hash):
+        if block_hash == self.genesis_hash:
+            return True
+        for block in self.blocks:
+            if block.header.tx_hash == block_hash:
+                return True
+        return False
+
+    def lookup(self, name):
+        return self.registry.get(name)
 
 class Pool:
 
@@ -161,13 +198,20 @@ class Block:
 
 class ZmqPoller:
 
-    def __init__(self, pool):
+    def __init__(self, pool, chain):
         self.pool = pool
+        self.chain = chain
         self.context = zmq.Context()
         self.recvr = self.context.socket(zmq.PULL)
         self.recvr.bind("tcp://*:5557")
+        self.query = self.context.socket(zmq.REP)
+        self.query.bind("tcp://*:5558")
 
     def update(self):
+        self._recv_tx()
+        self._recv_query()
+
+    def _recv_tx(self):
         try:
             name_reg = self.recvr.recv(flags=zmq.NOBLOCK)
         except zmq.ZMQError:
@@ -175,16 +219,28 @@ class ZmqPoller:
         value = self.recvr.recv()
         self.pool.add((name_reg, value))
 
+    def _recv_query(self):
+        try:
+            name = self.query.recv(flags=zmq.NOBLOCK)
+        except zmq.ZMQError:
+            return
+        print "Lookup:", name
+        value = self.chain.lookup(name)
+        if value is None:
+            self.query.send("__NONE__")
+            return
+        self.query.send(value)
+
 def main(argv):
     chain = Blockchain()
     pool = Pool(chain)
-    zmq_poller = ZmqPoller(pool)
+    zmq_poller = ZmqPoller(pool, chain)
     lc_zmq = LoopingCall(zmq_poller.update)
     lc_zmq.start(0.1)
     lc_chain = LoopingCall(chain.update)
     lc_chain.start(6)
     reactor.run()
-    return
+    print "Reactor exited."
 
 if __name__ == "__main__":
     main(sys.argv)

@@ -8,7 +8,7 @@ import zmq
 ioloop.install()
 
 from crypto2crypto import CryptoTransportLayer
-
+from market import Market
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -25,6 +25,7 @@ class MarketApplication(tornado.web.Application):
         tornado.web.Application.__init__(self, handlers, **settings)
         self.transport = CryptoTransportLayer(12345)
         self.transport.join_network()
+        self.market = Market(self.transport)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,10 @@ import json
 import pyelliptic as ec
 
 from p2p import PeerConnection, TransportLayer
+from multiprocessing import Process
 import traceback
+
+from protocol import hello
 
 class CryptoPeerConnection(PeerConnection):
     def __init__(self, address, transport, pub):
@@ -15,15 +18,11 @@ class CryptoPeerConnection(PeerConnection):
         return self._priv.encrypt(data, self._pub)
 
     def send(self, data):
-        self._transport.log("send", data['type'])
         self.send_raw(self.encrypt(json.dumps(data)))
 
-    def send_raw(self, serialized):
-        self._stream.send(serialized)
-
     def on_message(self, msg):
-        self.transport.on_raw_message(msg)
-
+        # this are just acks
+        pass
 
 
 class CryptoTransportLayer(TransportLayer):
@@ -36,47 +35,60 @@ class CryptoTransportLayer(TransportLayer):
         for uri, peer in self._peers.iteritems():
             if peer._pub:
                 peers[uri] = peer._pub.encode('hex')
-        return {'type': 'hello', 'uri': self._uri, 'pub': self._myself.get_pubkey().encode('hex'), 'peers': peers}
+        return {'uri': self._uri, 'pub': self._myself.get_pubkey().encode('hex'), 'peers': peers}
+
+    def create_peer(self, uri, pub):
+        if pub:
+            self.log("init peer " + uri + " " + pub[0:8], '*')
+            pub = pub.decode('hex')
+        else:
+            self.log("init peer [seed] " + uri, '*')
+
+        # create the peer
+        self._peers[uri] = CryptoPeerConnection(uri, self, pub)
+
+        # call 'peer' callbacks on listeners
+        self.trigger_callbacks('peer', self._peers[uri])
+
+        # now send a hello message to the peer
+        if pub:
+            self.log("sending encrypted profile to %s" % uri)
+            self._peers[uri].send(hello(self.get_profile()))
+        else:
+            # this is needed for the first connection
+            self.log("sending  normal profile to %s" % uri)
+            profile = hello(self.get_profile())
+            self._peers[uri].send_raw(json.dumps(profile))
 
     def init_peer(self, msg):
         uri = msg['uri']
         pub = msg.get('pub')
         if not uri in self._peers:
-            if pub:
-                self.log("init crypto peer " + uri + " " + pub[0:8])
-                pub = pub.decode('hex')
-            else:
-                self.log("init seed peer " + uri)
-            self._peers[uri] = CryptoPeerConnection(uri, self, pub)
-            if pub:
-                self._peers[uri].send(self.get_profile())
-            else:
-                # this is needed for the first connection
-                self._peers[uri].send_raw(json.dumps(self.get_profile()))
+            self.create_peer(uri, pub)
         elif pub and not self._peers[uri]._pub:
             self.log("setting pub for seed node")
-            self._peers[uri]._pub = pub
-
+            self._peers[uri]._pub = pub.decode('hex')
 
     def on_raw_message(self, serialized):
-        self.log("receive")
         try:
-            msg = json.loads(serialized[0])
-            self.log("receive " + msg['type'])
+            msg = json.loads(serialized)
+            self.log("receive [%s]" % msg.get('type', 'unknown'))
         except:
             try:
                 msg = self._myself.decrypt(serialized)
                 msg = json.loads(msg)
-                self.log("decrypted " + msg.get('type', 'unknown'))
+                self.log("decrypted [%s]" % msg.get('type', 'unknown'))
             except:
-                self.log("incorrect msg ! %s..." % serialized[0][:8])
-                # traceback.print_exc()
+                self.log("incorrect msg ! %s..." % serialized)
+                traceback.print_exc()
                 return
 
         msg_type = msg.get('type')
         if msg_type == 'hello' and msg.get('uri'):
             self.init_peer(msg)
-            print msg.get('peers')
+            for uri, pub in msg.get('peers', {}).iteritems():
+                self.init_peer({'uri': uri, 'pub': pub})
+            self.log("Update peer table [%s peers]" % len(self._peers))
         else:
             self.on_message(msg)
 

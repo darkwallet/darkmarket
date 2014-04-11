@@ -1,11 +1,15 @@
 import sys
 import json
+from collections import defaultdict
 
 import pyelliptic as ec
 
 from zmq.eventloop import ioloop, zmqstream
 import zmq
+from multiprocessing import Process
+from threading import Thread
 ioloop.install()
+import traceback
 
 # Default port
 DEFAULT_PORT=12345
@@ -21,18 +25,30 @@ else:
 # Connection to one peer
 class PeerConnection(object):
     def __init__(self, address):
+        self._address = address
+
+    def create_socket(self):
         self._ctx = zmq.Context()
         self._socket = self._ctx.socket(zmq.REQ)
-        self._socket.connect(address)
-        self._stream = zmqstream.ZMQStream(self._socket)
-        self._stream.on_recv(self.on_message)
-        self._stream.set_close_callback(self.closed)
+        self._socket.connect(self._address)
+
+    def cleanup_socket(self):
+        self._socket.close()
 
     def send(self, data):
         self.send_raw(json.dumps(data))
 
     def send_raw(self, serialized):
-        self._stream.send(serialized)
+        Process(target=self._send_raw, args=(serialized,)).start()
+
+    def _send_raw(self, serialized):
+        self.create_socket()
+
+        self._socket.send(serialized)
+        msg = self._socket.recv()
+        self.on_message(msg)
+
+        self.cleanup_socket()
 
     def on_message(self, msg):
         print "message received!", msg
@@ -44,9 +60,20 @@ class PeerConnection(object):
 class TransportLayer(object):
     def __init__(self, port=DEFAULT_PORT):
         self._peers = {}
+        self._callbacks = defaultdict(list)
+        self._id = MY_IP[-1] # hack for logging
         self._port = port
         self._uri = 'tcp://%s:%s' % (MY_IP, self._port)
-        self._id = MY_IP[-1] # hack for logging
+
+    def add_callback(self, section, callback):
+        self._callbacks[section].append(callback)
+
+    def trigger_callbacks(self, section, *data):
+        for cb in self._callbacks[section]:
+            cb(*data)
+        if not section == 'all':
+            for cb in self._callbacks['all']:
+                cb(*data)
 
     def get_profile(self):
         return {'type': 'hello', 'uri': 'tcp://%s:12345' % MY_IP}
@@ -55,15 +82,22 @@ class TransportLayer(object):
         self.listen()
         if SEED_URI:
             self.init_peer({'uri': SEED_URI})
-            self.send(self.get_profile())
 
     def listen(self):
+        Thread(target=self._listen).start()
+
+    def _listen(self):
         self.log("init server %s %s" % (MY_IP, self._port))
         self._ctx = zmq.Context()
-        self._socket = self._ctx.socket(zmq.XREP)
+        self._socket = self._ctx.socket(zmq.REP)
         self._socket.bind(self._uri)
-        self._stream = zmqstream.ZMQStream(self._socket)
-        self._stream.on_recv(self.on_raw_message)
+        while True:
+            message = self._socket.recv()
+            self.on_raw_message(message)
+            self._socket.send(json.dumps({'type': "ok"}))
+
+    def closed(self, *args):
+        print "client left"
 
     def init_peer(self, msg):
         uri = msg['uri']
@@ -75,16 +109,25 @@ class TransportLayer(object):
         print " %s [%s] %s" % (pointer, self._id, msg)
 
     def send(self, data):
-        self.log("sending %s" % data)
+        self.log("sending %s..." % data.keys())
         serialized = json.dumps(data)
         for peer in self._peers.values():
             try:
-                peer.send_raw(serialized)
+                if peer._pub:
+                    peer.send(serialized)
+                else:
+                    peer.send_raw(serialized)
             except:
                 print "error sending over peer!"
+                traceback.print_exc()
+
+    def on_message(self, msg):
+        # here goes the application callbacks
+        # we get a "clean" msg which is a dict holding whatever
+        self.trigger_callbacks(msg.get('type'))
 
     def on_raw_message(self, serialized):
-        self.log("connected")
+        self.log("connected " +str(len(serialized)))
         try:
             msg = json.loads(serialized[0])
         except:
@@ -94,5 +137,6 @@ class TransportLayer(object):
         msg_type = msg.get('type')
         if msg_type == 'hello' and msg.get('uri'):
             self.init_peer(msg)
-
+        else:
+            self.on_message(msg)
 
