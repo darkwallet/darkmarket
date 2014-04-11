@@ -38,7 +38,7 @@ class PeerConnection(object):
         print "message received!", msg
 
     def closed(self, *args):
-        print "peer disconnected"
+        print " - peer disconnected"
  
 # Transport layer manages a list of peers
 class TransportLayer(object):
@@ -46,6 +46,7 @@ class TransportLayer(object):
         self._peers = {}
         self._port = port
         self._uri = 'tcp://%s:%s' % (MY_IP, self._port)
+        self._id = MY_IP[-1] # hack for logging
 
     def get_profile(self):
         return {'type': 'hello', 'uri': 'tcp://%s:12345' % MY_IP}
@@ -57,21 +58,24 @@ class TransportLayer(object):
             self.send(self.get_profile())
 
     def listen(self):
-        print "init server", MY_IP, self._port
+        self.log("init server %s %s" % (MY_IP, self._port))
         self._ctx = zmq.Context()
-        self._socket = self._ctx.socket(zmq.REP)
+        self._socket = self._ctx.socket(zmq.XREP)
         self._socket.bind(self._uri)
         self._stream = zmqstream.ZMQStream(self._socket)
-        self._stream.on_recv(self.on_message)
+        self._stream.on_recv(self.on_raw_message)
 
     def init_peer(self, msg):
         uri = msg['uri']
-        print "init peer", msg
+        self.log("init peer %s" %  msg)
         if not uri in self._peers:
             self._peers[uri] = PeerConnection(uri)
 
+    def log(self, msg, pointer='-'):
+        print " %s [%s] %s" % (pointer, self._id, msg)
+
     def send(self, data):
-        print " * sending", data
+        self.log("sending %s" % data)
         serialized = json.dumps(data)
         for peer in self._peers.values():
             try:
@@ -79,12 +83,12 @@ class TransportLayer(object):
             except:
                 print "error sending over peer!"
 
-    def on_message(self, serialized):
-        print "connected"
+    def on_raw_message(self, serialized):
+        self.log("connected")
         try:
             msg = json.loads(serialized[0])
         except:
-            print "incorrect msg!", serialized
+            self.log("incorrect msg! " + serialized)
             return
 
         msg_type = msg.get('type')

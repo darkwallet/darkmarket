@@ -37,6 +37,6 @@ if __name__ == "__main__":
             error = False
         except:
             port += 1
-    print "started user port on %s" % port
+    print " - started user port on %s" % port
     tornado.ioloop.IOLoop.instance().start()
 
