@@ -1,5 +1,31 @@
 angular.module('app', [])
 
+angular.module('app').directive('identicon', function () {
+    return {
+      restrict: 'E', // element
+      scope: {
+        hash: '=',
+        iconSize: '='
+      },
+      link: function(scope, element, attrs) {
+        var iconSize = scope.iconSize || 32;
+
+        // Create the identicon
+        function createFromHex(dataHex) {
+          var data = new Identicon(dataHex, iconSize).toString();
+          element.html('<img class="identicon" src="data:image/png;base64,' + data + '">');
+        }
+        // Watch for hash changes
+        scope.$watch('hash', function() {
+          if (scope.hash) {
+            var tohash = scope.hash.substring(16, 48)
+            createFromHex(tohash);
+          }
+        })
+      }
+    }
+  });
+
 angular.module('app').controller('Market', ['$scope', function($scope) {
 
   $scope.page = false
@@ -16,8 +42,9 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
 
   $scope.peers = [];
   $scope.peerIds = [];
-
+  $scope.awaitingShop = null;
   $scope.queryShop = function(peer) {
+     $scope.awaitingShop = peer.pubkey;
      var query = {'type': 'query_page', 'pubkey': peer.pubkey}
      socket.send('query_page', query)
   }
@@ -44,6 +71,8 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
   // Peer information has arrived
   $scope.parse_page = function(msg) {
     console.log("page!", msg)
+    if (msg.pubkey != $scope.awaitingShop)
+       return
     $scope.page = msg
     if (!$scope.$$phase) {
        $scope.$apply();
@@ -57,6 +86,15 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
     if (!$scope.$$phase) {
        $scope.$apply();
     }
+  }
+  $scope.review= {rating:5, text:""}
+  $scope.addReview = function() {
+     var query = {'type': 'review', 'pubkey': $scope.page.pubkey, 'text': $scope.review.text, 'rating': parseInt($scope.review.rating)}
+     socket.send('review', query)
+
+     $scope.review.rating = 5;
+     $scope.review.text = '';
+     $scope.showReviewForm = false;
   }
   // My information has arrived
   $scope.parse_myself = function(msg) {
@@ -73,6 +111,7 @@ angular.module('app').controller('Market', ['$scope', function($scope) {
   }
   // A shout has arrived
   $scope.parse_shout = function(msg) {
+    console.log("shout",msg)
     $scope.shouts.push(msg)
     if (!$scope.$$phase) {
        $scope.$apply();

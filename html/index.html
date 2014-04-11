@@ -1,27 +1,65 @@
 <html ng-app='app'>
 <head>
 <script src="/html/vendors/angular.min.js"></script>
+<script src="/html/vendors/identicon.js"></script>
+<script src="/html/vendors/pnglib.js"></script>
+<script src="/html/vendors/jquery.min.js"></script>
+<script src="/html/vendors/bootstrap.min.js"></script>
 <script src="/html/js/ws.js"></script>
 <script src="/html/js/app.js"></script>
+<link href="/html/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body ng-controller="Market">
-  <h3>peers</h3>
-  <div></div>
-  <div ng-repeat="peer in peers">{{peer.uri}} {{peer.pubkey}} <button ng-click="queryShop(peer)">QueryShop</button></div>
-  <h3>myself</h3>
-  <div>{{myself.pubkey}} {{myself.uri}}</div>
-  <div ng-repeat="review in myself.reputation">{{review.rating}} {{review.text}}</div>
-<div ng-show="!page">
-  <h3>shout</h3>
-  <div ng-repeat="shout in shouts">{{shout.text}}</div>
-  <input type="text" ng-model="newShout"></input>
-  <button ng-click="createShout(newShout)">shout</button>
+<div ng-show="warningMessage" class="alert alert-warning"></div>
+<div class="container">
+<h2>DarkMarket</h2>
+<div class="row">
+  <div class="col-sm-6">
+    <h3>peers</h3>
+    <div></div>
+    <div ng-repeat="peer in peers">
+            <identicon icon-size="38" hash="peer.pubkey" title="{{peer.pubkey}}"></identicon><span title="{{peer.pubkey}}">{{peer.uri}} {{peer.pubkey?peer.pubkey.slice(0,16):'unknown'}}... </span><button ng-click="queryShop(peer)" class="btn btn-default navbar-btn">QueryShop</button></div>
+  </div>
+  <div class="col-sm-6">
+    <h3>myself</h3>
+    <identicon icon-size="64" hash="myself.pubkey" title="{{myself.pubkey}}"></identicon>
+    <div title="{{myself.pubkey}}">{{myself.pubkey.slice(0,16)}}... {{myself.uri}}</div>
+    <h4>Reviews</h4>
+    <div ng-repeat="review in myself.reputation">[{{review.rating}}] {{review.text}}</div>
+  </div>
 </div>
-<div ng-show="page">
-  <h3>shop</h3>
-  <div>{{page.text}}</div>
-  <div><b>Owner:</b> {{page.pubkey}}</div>
-  <div><b>Signature</b> {{page.signature}}</div>
+<div class="row">
+  <div class="col-sm-8">
+    <div ng-show="page" class="panel panel-default">
+      <div class="panel-heading">
+    <identicon icon-size="64" hash="page.pubkey" title="{{page.pubkey}}"></identicon>Shop
+      <button ng-click="showReviewForm=true" ng-show="!showReviewForm" class="btn btn-default navbar-btn">Review</button>
+      <form ng-show="showReviewForm">
+        Text: <input type="text" ng-model="review.text" placeholder="Write a review"></input>
+        Rating: <input type="number" ng-model="review.rating" placeholder="Rating"></input>
+        <a class="btn btn-primary navbar-btn" ng-click="addReview()" type="submit">Submit</a>
+        <a class="btn btn-warning navbar-btn" ng-click="showReviewForm=false" type="cancel">Cancel</a>
+      </form>
+      </div>
+      <div class="panel-body" ng-show="page">
+        <div>{{page.text}}</div>
+        <div title="page.pubkey"><h2>Owner:</h2> {{page.pubkey.slice(0,32)}}...</div>
+        <div title="{{page.signature}}"><h2>Signature</h2> {{page.signature.slice(0,32)}}...</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div>
+      <h3>shout</h3>
+      <div ng-repeat="shout in shouts">{{shout.text}}</div>
+      <form>
+        <input type="text" ng-model="newShout"></input>
+        <button ng-click="createShout(newShout)" class="btn btn-default navbar-btn">shout</button>
+      </form>
+    </div>
+  </div>
 </div>
+
+</div> <!-- container -->
 </body>
 </html>

@@ -39,14 +39,17 @@ class Reputation(object):
     # create a review
     def create_review(self, pubkey, text, rating):
         signature = self._priv.sign(self._build_review(pubkey, text, rating))
-        self._reviews[pubkey].append(review(self._priv.get_pubkey(), pubkey, signature, text, rating))
+        new_review = review(self._priv.get_pubkey(), pubkey, signature, text, rating)
+        self._reviews[pubkey].append(new_review)
+        # announce the new reputation
+        self._transport.send(reputation(pubkey, [new_review]))
 
     # what we sign
     def _build_review(self, pubkey, text, rating):
         return json.dumps([pubkey.encode('hex'),  text, rating])
 
     def query_reputation(self, pubkey):
-        self.transport.send(query_reputation(pubkey))
+        self._transport.send(query_reputation(pubkey))
 
     def parse_review(self, msg):
         pubkey = msg['pubkey'].decode('hex')
@@ -62,7 +65,7 @@ class Reputation(object):
             newreview = review(pubkey, subject, signature, text, rating)
             self._reviews[pubkey] = newreview
         else:
-            self.transport.log("[reputation] Invalid review!")
+            self._transport.log("[reputation] Invalid review!")
 
 
     # callbacks for messages

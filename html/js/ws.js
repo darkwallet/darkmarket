@@ -1,6 +1,7 @@
 function Connection(onMessage) {
 
-  var websocket = new WebSocket('ws://localhost:8888/ws');
+  socket_uri = document.URL.replace(/https?:(.*)\/html\/.*/, "ws:$1/ws");
+  var websocket = new WebSocket(socket_uri);
 
   websocket.onopen = function(evt) {
    console.log("open!", evt)

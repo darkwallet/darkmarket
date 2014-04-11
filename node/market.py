@@ -36,7 +36,7 @@ class Market(object):
         self.signature = self._transport._myself.sign(data)
 
     def query_page(self, pubkey):
-        self._transport.send(protocol.query_page(pubkey))
+        self._transport.send(query_page(pubkey))
 
     def on_page(self, page):
         self._transport.log("[market] got page " + str(page))

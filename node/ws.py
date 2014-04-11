@@ -20,6 +20,7 @@ class ProtocolHandler:
         # handlers from events coming from websocket, we shouldnt need this
         self._handlers = {
             "query_page":          self.client_query_page,
+            "review":          self.client_review,
             "shout":          self.client_shout
         }
 
@@ -42,7 +43,13 @@ class ProtocolHandler:
 
     # requests coming from the client
     def client_query_page(self, socket_handler, msg):
-        self.node.query_page(protocol.query_page(msg['pubkey'].decode('hex')))
+        self.node.query_page(msg['pubkey'].decode('hex'))
+
+    def client_review(self, socket_handler, msg):
+        pubkey = msg['pubkey'].decode('hex')
+        text = msg['text']
+        rating = msg['rating']
+        self.node.reputation.create_review(pubkey, text, rating)
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))
