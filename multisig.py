@@ -77,7 +77,7 @@ class Multisig:
             # Add sighash::all to end of signature.
             signature = key.sign(sighash) + "\x01"
             signatures.append(signature)
-        return signature
+        return signatures
 
 def add_input(tx, prevout):
     input = obelisk.TxIn()
@@ -129,7 +129,6 @@ def main():
         print tx.serialize().encode("hex")
         sigs1 = msig.sign_all_inputs(tx, "b28c7003a7b6541cd1cd881928863abac0eff85f5afb40ff5561989c9fb95fb2".decode("hex"))
         sigs3 = msig.sign_all_inputs(tx, "b74dbef0909c96d5c2d6971b37c8c71d300e41cad60aeddd6b900bba61c49e70".decode("hex"))
-        print [s.encode("hex") for s in sigs1]
         for i, input in enumerate(tx.inputs):
             sigs = (sigs1[i], sigs3[i])
             script = "\x00"
@@ -137,8 +136,8 @@ def main():
                 script += chr(len(sig)) + sig
             script += "\x4c"
             assert len(msig.script) < 255
-            script += chr(len(msig.script))
-            print script.encode("hex")
+            script += chr(len(msig.script)) + msig.script
+            print "Script:", script.encode("hex")
             tx.inputs[i].script = script
         print tx
         print tx.serialize().encode("hex")
