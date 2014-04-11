@@ -115,7 +115,11 @@ class TransportLayer(object):
         self.log("sending %s..." % data.keys())
         # directed message
         if send_to:
-            self._peers[send_to].send(data)
+            for peer in self._peers.values():
+                if peer._pub == send_to:
+                    peer.send(data)
+                    return
+            print "peer not found!", send_to, self._myself.get_pubkey()
             return
         # broadcast
         for peer in self._peers.values():

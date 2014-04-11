@@ -1,8 +1,10 @@
 import json
-from protocol import reputation, query_reputation
+from protocol import reputation, query_reputation, order
 from collections import defaultdict
 from pyelliptic import ECC
 import random
+
+from multisig import Multisig
 
 class Orders(object):
     def __init__(self, transport):
@@ -23,11 +25,17 @@ class Orders(object):
         new_order = order(id, buyer, seller, 'new', text, self._escrows)
         self._orders[id] = new_order
         # announce the new reputation
-        self._transport.send(new_order, buyer)
+        self._transport.send(new_order, seller)
 
     def accept_order(self, new_order): # auto
         new_order['state'] = 'accepted'
-        new_order.escrows = [new_order.escrows[0]]
+        seller = new_order['seller'].decode('hex')
+        buyer = new_order['buyer'].decode('hex')
+        print "accept order", new_order
+        new_order['escrows'] = [new_order.get('escrows')[0]]
+        escrow = new_order['escrows'][0].decode('hex')
+        self._multisig = Multisig(None, 2, [buyer, seller, escrow])
+        new_order['address'] = self._multisig.address
         self._orders[new_order['id']] = new_order
         self._transport.send(new_order, new_order['buyer'].decode('hex'))
     
@@ -47,13 +55,14 @@ class Orders(object):
     # a new order has arrived
     def on_order(self, msg):
         state = msg.get('state')
+        self._transport.log("Order " + state)
         buyer = msg.get('buyer').decode('hex')
         seller = msg.get('seller').decode('hex')
         myself = self._transport._myself.get_pubkey()
         if not buyer or not seller or not state:
             self._transport.log("Malformed order")
             return
-        if state is not 'new' and not msg.get('id'):
+        if not state == 'new' and not msg.get('id'):
             self._transport.log("Order with no id")
             return
         # check order state
@@ -98,7 +107,7 @@ class Orders(object):
                 self._transport.log("Order not for us")
         if msg.get('id'):
             if msg['id'] in self._orders:
-                self._orders[msg['id']].state = msg['state']
+                self._orders[msg['id']]['state'] = msg['state']
             else:
                 self._orders[msg['id']] = msg
 

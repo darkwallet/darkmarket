@@ -63,7 +63,7 @@ class Reputation(object):
         
         if valid:
             newreview = review(pubkey, subject, signature, text, rating)
-            self._reviews[pubkey].append(newreview)
+            self._reviews[subject].append(newreview)
         else:
             self._transport.log("[reputation] Invalid review!")
 

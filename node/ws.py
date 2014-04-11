@@ -5,7 +5,6 @@ import json
 import tornado.ioloop
 import random
 import protocol
-import lookup
 import obelisk
 
 class ProtocolHandler:
@@ -28,7 +27,6 @@ class ProtocolHandler:
             "shout":          self.client_shout
         }
 
-        self.query_ident = None
 
     def send_opening(self):
         peers = []
@@ -64,22 +62,10 @@ class ProtocolHandler:
 
     def client_search(self, socket_handler, msg):
         print "search", msg
-        if self.query_ident is None:
-            print "Initializing"
-            self.query_ident = lookup.QueryIdent()
-        nickname = str(msg["text"])
-        key = self.query_ident.lookup(nickname)
-        if key is None:
-            print "Key not found!"
-            self.send_to_client("Not found!", None)
-            return
-        print "Found key:", key.encode("hex")
-        if self._transport.nick_mapping.has_key(nickname):
-            print "Already have a cached mapping, just adding key there."
-            self._transport.nick_mapping[0] = key
-            return
-        self._transport.nick_mapping[nickname] = [key, None]
-        self._transport.send(protocol.negotiate_pubkey(nickname, key))
+        response = self.node.lookup(msg)
+        if response:
+            print "yuea", response
+            self.send_to_client(*response)
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))

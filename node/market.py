@@ -1,8 +1,10 @@
 from protocol import shout, page, query_page
 from reputation import Reputation
 from orders import Orders
+import protocol
 import sys
 import json
+import lookup
 
 
 class Market(object):
@@ -13,6 +15,7 @@ class Market(object):
         self._myself = transport._myself
         self._peers = transport._peers
         self._transport = transport
+        self.query_ident = None
 
         self.reputation = Reputation(self._transport)
         self.orders = Orders(self._transport)
@@ -33,6 +36,27 @@ class Market(object):
 
         # send something
         transport.send(shout({'text': 'xxxxx'}))
+
+    def lookup(self, msg):
+        print "search", msg
+        if self.query_ident is None:
+            print "Initializing"
+            self.query_ident = lookup.QueryIdent()
+        nickname = str(msg["text"])
+        key = self.query_ident.lookup(nickname)
+        if key is None:
+            print "Key not found!"
+            return ("Not found!", None)
+        print "Found key:", key.encode("hex")
+        if self._transport.nick_mapping.has_key(nickname):
+            print "Already have a cached mapping, just adding key there."
+            response = {'nickname': nickname, 'pubkey': self._transport.nick_mapping[nickname][1].encode('hex'), 'signature': self._transport.nick_mapping[nickname][0].encode('hex'), 'type': 'response_pubkey', 'signature': 'unknown'}
+            self._transport.nick_mapping[nickname][0] = key
+            return (None, response)
+
+        self._transport.nick_mapping[nickname] = [key, None]
+        self._transport.send(protocol.negotiate_pubkey(nickname, key))
+
 
     def load_page(self):
         with open(sys.argv[1]) as f:
