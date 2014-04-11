@@ -1,6 +1,20 @@
 import obelisk
 from twisted.internet import reactor
 
+# Create new private key:
+#
+#   $ sx newkey > key1
+#
+# Show private secret:
+#
+#   $ cat key1 | sx wif-to-secret
+#
+# Show compressed public key:
+#
+#   $ cat key1 | sx pubkey
+#
+# You will need 3 keys for buyer, seller and arbitrer
+
 def build_output_info_list(unspent_rows):
     unspent_infos = []
     for row in unspent_rows:
@@ -103,25 +117,68 @@ def generate_signature_hash(parent_tx, input_index, script_code):
 
 class Escrow:
 
-    def __init__(self, buyer_pubkey, seller_pubkey, arbit_pubkey):
+    def __init__(self, client, buyer_pubkey, seller_pubkey, arbit_pubkey):
         pubkeys = (buyer_pubkey, seller_pubkey, arbit_pubkey)
-        self.multisig = Multisig(2, pubkeys)
+        self.multisig = Multisig(client, 2, pubkeys)
 
+    # 1. BUYER: Deposit funds for seller
     @property
     def deposit_address(self):
         return self.multisig.address
 
-    def release_funds(self, value):
-        # Returns signed transaction
-        pass
+    # 2. BUYER: Send unsigned tx to seller
+    def initiate(self, destination_address, finished_cb):
+        self.multisig.create_unsigned_transaction(
+            destination_address, finished_cb)
+
+    # ...
+    # 3. BUYER: Release funds by sending signature to seller
+    def release_funds(self, tx, secret):
+        return self.multisig.sign_all_inputs(tx, secret)
+
+    # 4. SELLER: Claim your funds by generating a signature.
+    def claim_funds(self, tx, secret, buyer_sigs):
+        seller_sigs = self.multisig.sign_all_inputs(tx, secret)
+        return Escrow.complete(tx, buyer_sigs, seller_sigs,
+                               self.multisig.script)
+
+    @staticmethod
+    def complete(tx, buyer_sigs, seller_sigs, script_code):
+        for i, input in enumerate(tx.inputs):
+            sigs = (buyer_sigs[i], seller_sigs[i])
+            script = "\x00"
+            for sig in sigs:
+                script += chr(len(sig)) + sig
+            script += "\x4c"
+            assert len(script_code) < 255
+            script += chr(len(script_code)) + script_code
+            tx.inputs[i].script = script
+        return tx
 
 def main():
+    ##########################################################
+    # ESCROW TEST
+    ##########################################################
     pubkeys = [
         "035b175132eeb8aa6e8455b6f1c1e4b2784bea1add47a6ded7fc9fc6b7aff16700".decode("hex"),
         "0351e400c871e08f96246458dae79a55a59730535b13d6e1d4858035dcfc5f16e2".decode("hex"),
         "02d53a92e3d43db101db55e351e9b42b4f711d11f6a31efbd4597695330d75d250".decode("hex")
     ]
     client = obelisk.ObeliskOfLightClient("tcp://85.25.198.97:9091")
+    escrow = Escrow(client, pubkeys[0], pubkeys[1], pubkeys[2])
+    def finished(tx):
+        buyer_sigs = escrow.release_funds(tx,
+            "b28c7003a7b6541cd1cd881928863abac0eff85f5afb40ff5561989c9fb95fb2".decode("hex"))
+        completed_tx = escrow.claim_funds(tx,
+            "5b05667dac199c48051932f14736e6f770e7a5917d2994a15a1508daa43bc9b0".decode("hex"),
+            buyer_sigs)
+        print completed_tx.serialize().encode("hex")
+    escrow.initiate("1Fufjpf9RM2aQsGedhSpbSCGRHrmLMJ7yY", finished)
+    reactor.run()
+    return
+    ##########################################################
+    # MULTISIGNATURE TEST
+    ##########################################################
     msig = Multisig(client, 2, pubkeys)
     print msig.address
     def finished(tx):
