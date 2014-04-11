@@ -8,15 +8,67 @@
 <script src="/html/js/ws.js"></script>
 <script src="/html/js/app.js"></script>
 <link href="/html/css/bootstrap.min.css" rel="stylesheet">
+<link href="/html/css/dark.css" rel="stylesheet">
+<link href="/html/css/app.css" rel="stylesheet">
 </head>
 <body ng-controller="Market">
 <div ng-show="warningMessage" class="alert alert-warning"></div>
 <div class="container">
-<h2>DarkMarket</h2>
-  <div class="panel panel-default">
-   <div class="panel-body">
-    Search: <input size="60" ng-model="search" type="text" placeholder="Search for nicknames.."></input> <input class="btn btn-sm btn-primary" ng-click="searchNickname()" type="submit"></input>
-   </div>
+
+
+
+<!-- MOVE APP INSIDE THIS AREA -->
+    <div class="site-wrapper">
+
+      <div class="site-wrapper-inner">
+
+        <div class="cover-container">
+
+          <div class="masthead clearfix">
+            <div class="inner">
+              <h3 class="masthead-brand">
+                <img src="/html/img/logo.png" alt="DarkMarket" />
+              </h3>
+              <ul class="nav masthead-nav">
+                <li class="active"><a href="#">Home</a></li>
+                <li><a href="#">Search</a></li>
+                <li><a href="#">Sell</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="inner cover">
+            <h1 class="cover-heading">The Dark Side of the Market</h1>
+            <img class="img-responsive" src="/html/img/dsotm-link.png" alt="DarkMarket Mascot" id="mascot" />
+
+            <p class="lead">Here you can share your creations as freely as you can share an idea.</p>
+            <p class="lead">
+              <a href="#" class="btn btn-lg btn-default">Create Seller Page</a>
+            </p>
+          </div>
+
+          <div class="mastfoot">
+            <div class="inner">
+              <p>DarkMarket is a safe untouchable marketplace for the planet Earth.</p>
+              <p>Distributed free from tyranny and protected by the GPL.</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+<!-- /MOVE APP INSIDE THIS AREA -->
+
+
+
+  <div class="search-area panel panel-default">
+   <form class="form-inline panel-body">
+    <label class="sr-only" for="search">Search:</label>
+    <input class="form-control" size="60" ng-model="search" type="text" placeholder="Search for nicknames.."></input>
+    <input class="btn btn-success" ng-click="searchNickname()" type="submit"></input>
+   </form>
   </div>
 <div class="row">
   <div class="col-sm-6">
