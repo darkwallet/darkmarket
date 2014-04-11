@@ -6,6 +6,7 @@ import tornado.ioloop
 import random
 import protocol
 import lookup
+import obelisk
 
 class ProtocolHandler:
     def __init__(self, transport, node, handler):
@@ -22,6 +23,7 @@ class ProtocolHandler:
         self._handlers = {
             "query_page":          self.client_query_page,
             "review":          self.client_review,
+            "order":          self.client_order,
             "search":          self.client_search,
             "shout":          self.client_shout
         }
@@ -51,6 +53,9 @@ class ProtocolHandler:
         self.node.query_page(pubkey)
         self.node.reputation.query_reputation(pubkey)
 
+    def client_order(self, socket_handler, msg):
+        self.node.orders.on_order(msg)
+
     def client_review(self, socket_handler, msg):
         pubkey = msg['pubkey'].decode('hex')
         text = msg['text']
@@ -69,7 +74,12 @@ class ProtocolHandler:
             self.send_to_client("Not found!", None)
             return
         print "Found key:", key.encode("hex")
-        self._transport.send(protocol.negotiate_pubkey(key))
+        if self._transport.nick_mapping.has_key(nickname):
+            print "Already have a cached mapping, just adding key there."
+            self._transport.nick_mapping[0] = key
+            return
+        self._transport.nick_mapping[nickname] = [key, None]
+        self._transport.send(protocol.negotiate_pubkey(nickname, key))
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))

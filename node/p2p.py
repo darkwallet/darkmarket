@@ -111,12 +111,11 @@ class TransportLayer(object):
     def log(self, msg, pointer='-'):
         print " %s [%s] %s" % (pointer, self._id, msg)
 
-    def send(self, data):
+    def send(self, data, send_to=None):
         self.log("sending %s..." % data.keys())
-        send_to = data.get('to')
         # directed message
         if send_to:
-            self._peers[send_to.decode('hex')].send(data)
+            self._peers[send_to].send(data)
             return
         # broadcast
         for peer in self._peers.values():

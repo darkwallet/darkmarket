@@ -7,6 +7,7 @@ from multiprocessing import Process
 import traceback
 
 from protocol import hello, response_pubkey
+import obelisk
 
 if len(sys.argv) < 2:
     print >> sys.stderr, "Error, you need the filename of your crypto stuff."
@@ -47,6 +48,8 @@ class CryptoTransportLayer(TransportLayer):
         TransportLayer.__init__(self, port)
         self._myself = ec.ECC(curve='secp256k1')
 
+        self.nick_mapping = {}
+
     def get_profile(self):
         peers = {}
         for uri, peer in self._peers.iteritems():
@@ -54,11 +57,16 @@ class CryptoTransportLayer(TransportLayer):
                 peers[uri] = peer._pub.encode('hex')
         return {'uri': self._uri, 'pub': self._myself.get_pubkey().encode('hex'), 'peers': peers}
 
-    def respond_pubkey_if_mine(self, ident_pubkey):
+    def respond_pubkey_if_mine(self, nickname, ident_pubkey):
         if ident_pubkey != PUBKEY:
             print "Not my ident."
             return
-        self._transport.send(response_pubkey(self._myself.get_pubkey()))
+        pubkey = self._myself.get_pubkey()
+        ec_key = obelisk.EllipticCurveKey()
+        ec_key.set_secret(SECRET)
+        digest = obelisk.Hash(pubkey)
+        signature = ec_key.sign(digest)
+        self.send(response_pubkey(nickname, pubkey, signature))
 
     def create_peer(self, uri, pub):
         if pub:
