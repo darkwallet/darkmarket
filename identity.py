@@ -16,7 +16,8 @@ class Blockchain:
         self.registry = {}
         db = shelve.open("blockchain")
         try:
-            self.blocks = db["chain"]
+            for block in db["chain"]:
+                self.accept(block)
         except KeyError:
             pass
         db.close()
@@ -85,6 +86,9 @@ class Blockchain:
             print >> sys.stderr, "Previous block does not exist. Dropping block."
             return
         block.priority = height * 10**8 + offset
+        if self._priority_exists(block.priority):
+            print >> sys.stderr, "Blocks cannot have matching priorities."
+            return
         self.blocks.append(block)
         self.blocks.sort(key=lambda b: b.priority)
         self._regenerate_lookup()
@@ -104,6 +108,12 @@ class Blockchain:
     def postpone(self, block):
         # readd for later processing
         self.accept(block)
+
+    def _priority_exists(self, priority):
+        for block in self.blocks:
+            if block.priority == priority:
+                return True
+        return False
 
     @property
     def genesis_hash(self):
