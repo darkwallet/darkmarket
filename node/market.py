@@ -6,7 +6,7 @@ class Market(object):
 
         # for now we have the id in the transport
         self._myself = transport._myself
-        self._peers = transport._myself
+        self._peers = transport._peers
         self._transport = transport
 
         # register callbacks for incoming events
