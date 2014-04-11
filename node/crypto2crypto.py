@@ -1,4 +1,5 @@
 import json
+import sys
 import pyelliptic as ec
 
 from p2p import PeerConnection, TransportLayer
@@ -6,6 +7,17 @@ from multiprocessing import Process
 import traceback
 
 from protocol import hello
+
+if len(sys.argv) < 2:
+    print >> sys.stderr, "Error, you need the filename of your crypto stuff."
+    sys.exit(-1)
+
+def load_crypto_details():
+    with open(sys.argv[1]) as f:
+        data = json.loads(f.read())
+    return data["nickname"], data["secret"], data["pubkey"]
+
+NICKNAME, SECRET, PUBKEY = load_crypto_details()
 
 class CryptoPeerConnection(PeerConnection):
     def __init__(self, address, transport, pub):

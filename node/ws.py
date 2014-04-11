@@ -58,18 +58,17 @@ class ProtocolHandler:
         self.node.reputation.create_review(pubkey, text, rating)
 
     def client_search(self, socket_handler, msg):
-        print "begin"
+        print "search", msg
         if self.query_ident is None:
             print "Initializing"
             self.query_ident = lookup.QueryIdent()
-        print "search", msg
-        #key = self.query_ident.lookup(str(msg["text"]))
-        key = "hello"
-        print "Done."
+        nickname = str(msg["text"])
+        key = self.query_ident.lookup(nickname)
         if key is None:
             print "Key not found!"
+            self.send_to_client("Not found!", None)
             return
-        print "key", key.encode("hex")
+        print "Found key:", key.encode("hex")
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))

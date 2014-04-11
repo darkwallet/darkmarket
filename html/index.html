@@ -13,6 +13,11 @@
 <div ng-show="warningMessage" class="alert alert-warning"></div>
 <div class="container">
 <h2>DarkMarket</h2>
+  <div class="panel panel-default">
+   <div class="panel-body">
+    Search: <input size="60" ng-model="search" type="text" placeholder="Search for nicknames.."></input> <input class="btn btn-sm btn-primary" ng-click="searchNickname()" type="submit"></input>
+   </div>
+  </div>
 <div class="row">
   <div class="col-sm-6">
     <h3>peers</h3>
@@ -46,6 +51,8 @@
         <div title="page.pubkey"><h2>Owner:</h2> {{page.pubkey.slice(0,32)}}...</div>
         <div title="{{page.signature}}"><h2>Signature</h2> {{page.signature.slice(0,32)}}...</div>
       </div>
+      <h3>Reviews</h3>
+      <div ng-repeat="review in currentReviews">{{review.rating}} {{review.text}} {{review.pubkey.slice(0,16)}}...</div>
     </div>
   </div>
   <div class="col-sm-4">

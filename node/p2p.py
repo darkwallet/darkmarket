@@ -16,12 +16,12 @@ DEFAULT_PORT=12345
 
 # Get some command line pars
 SEED_URI = False
-if len(sys.argv) > 1:
-    MY_IP = sys.argv[1]
+if len(sys.argv) > 2:
+    MY_IP = sys.argv[2]
 else:
     MY_IP = "127.0.0.1"
-if len(sys.argv) > 2:
-    SEED_URI = sys.argv[2] # like tcp://127.0.0.1:12345
+if len(sys.argv) > 3:
+    SEED_URI = sys.argv[3] # like tcp://127.0.0.1:12345
 else:
     print "warning no seed!! you should call like [market myip seeduri]"
 
@@ -113,6 +113,12 @@ class TransportLayer(object):
 
     def send(self, data):
         self.log("sending %s..." % data.keys())
+        send_to = data.get('to')
+        # directed message
+        if send_to:
+            self._peers[send_to.decode('hex')].send(data)
+            return
+        # broadcast
         for peer in self._peers.values():
             try:
                 if peer._pub:
