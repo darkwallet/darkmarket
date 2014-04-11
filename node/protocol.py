@@ -24,3 +24,16 @@ def query_reputation(pubkey):
     data['pubkey'] = pubkey.encode('hex')
     return data
 
+def page(pubkey, text, signature):
+    data = {}
+    data['type'] = 'page'
+    data['pubkey'] = pubkey.encode('hex')
+    data['signature'] = signature.encode('hex')
+    data['text'] = text
+    return data
+
+def query_page(pubkey):
+    data = {}
+    data['type'] = 'query_page'
+    data['pubkey'] = pubkey.encode('hex')
+    return data

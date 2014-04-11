@@ -1,5 +1,6 @@
-from protocol import shout
+from protocol import shout, page, query_page
 from reputation import Reputation
+
 
 class Market(object):
     def __init__(self, transport):
@@ -14,37 +15,41 @@ class Market(object):
 
 
         # if something comes in, store it:
-        self.nicks = []
-        self.reps = []
-        self.pages = []
+        self.nicks = {}
+        self.pages = {}
 
         # register callbacks for incoming events
-        transport.add_callback('message', self.on_message)
         transport.add_callback('peer', self.on_peer)
+        transport.add_callback('query_page', self.on_query_page)
+        transport.add_callback('page', self.on_page)
+
+        self.load_page()
 
         # send something
-        transport.send(shout({'subject': 'xxxxx'}))
+        transport.send(shout({'text': 'xxxxx'}))
+
+    def load_page(self):
+        f = open('shop/myshop.txt')
+        data = f.read()
+        f.close()
+        self.mypage = data
+        self.signature = self._transport._myself.sign(data)
+
+    def query_page(self, pubkey):
+        self._transport.send(protocol.query_page(pubkey))
+
+    def on_page(self, page):
+        self._transport.log("[market] got page " + str(page))
+        pubkey = page.get('pubkey')
+        page = page.get('text')
+        if pubkey and page:
+            self.pages[pubkey] = page
+        
+
+    def on_query_page(self, peer):
+        self._transport.log("[market] query page " + str(peer))
+        self._transport.send(page(self._transport._myself.get_pubkey(), self.mypage, self.signature))
 
     def on_peer(self, peer):
         self._transport.log("[market] new peer")
 
-    def on_message(self, msg):
-        self._transport.log("[market] generic message")
-        msg_type = msg.get('type')
-        if msg_type == 'get_page' and msg.get('who'):
-            print "got page request:"
-            print msg.get('who')
-            # TODO: if who is us, reply with our seller page
-
-        if msg_type == 'page' and msg.get('who') and msg.get('content'):
-            print "got page:"
-            print msg.get('who')
-            print msg.get('content')
-            # TODO: store the content in the pages array
-
-    def send_page(self, who, content):
-        self._transport.send({'type': 'page', 'who': who, 'content': content})
-
-    def send_get_page(self, who):
-        self._transport.send(shout({'subject': 'xxxxx'}))
-        #self._transport.send({'type': 'get-page', 'who': who})

@@ -1,0 +1,27 @@
+<html ng-app='app'>
+<head>
+<script src="/html/vendors/angular.min.js"></script>
+<script src="/html/js/ws.js"></script>
+<script src="/html/js/app.js"></script>
+</head>
+<body ng-controller="Market">
+  <h3>peers</h3>
+  <div></div>
+  <div ng-repeat="peer in peers">{{peer.uri}} {{peer.pubkey}} <button ng-click="queryShop(peer)">QueryShop</button></div>
+  <h3>myself</h3>
+  <div>{{myself.pubkey}} {{myself.uri}}</div>
+  <div ng-repeat="review in myself.reputation">{{review.rating}} {{review.text}}</div>
+<div ng-show="!page">
+  <h3>shout</h3>
+  <div ng-repeat="shout in shouts">{{shout.text}}</div>
+  <input type="text" ng-model="newShout"></input>
+  <button ng-click="createShout(newShout)">shout</button>
+</div>
+<div ng-show="page">
+  <h3>shop</h3>
+  <div>{{page.text}}</div>
+  <div><b>Owner:</b> {{page.pubkey}}</div>
+  <div><b>Signature</b> {{page.signature}}</div>
+</div>
+</body>
+</html>

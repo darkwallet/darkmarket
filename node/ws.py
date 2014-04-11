@@ -4,6 +4,7 @@ import logging
 import json
 import tornado.ioloop
 import random
+import protocol
 
 class ProtocolHandler:
     def __init__(self, transport, node, handler):
@@ -13,39 +14,56 @@ class ProtocolHandler:
 
         # register on transport events to forward..
         transport.add_callback('peer', self.on_node_peer)
+        transport.add_callback('page', self.on_node_page)
         transport.add_callback('all', self.on_node_message)
 
         # handlers from events coming from websocket, we shouldnt need this
         self._handlers = {
-            "test":          self.client_test
+            "query_page":          self.client_query_page,
+            "shout":          self.client_shout
         }
 
     def send_opening(self):
+        peers = []
+        for uri, peer in self._transport._peers.items():
+            peer_item = {'uri': uri}
+            if peer._pub:
+               peer_item['pubkey'] = peer._pub.encode('hex')
+            else:
+               peer_item['pubkey'] = 'unknown'
+            peers.append(peer_item)
         message = {
             'type': 'myself',
             'pubkey': self._transport._myself.get_pubkey().encode('hex'),
-            'peers': self._transport._peers.keys(),
+            'peers': peers,
             'reputation': self.node.reputation.get_my_reputation()
         }
-        self.queue_message(None, message)
+        self.send_to_client(None, message)
 
-    def client_test(self, *args):
-        self._transport.log("testing from client")
+    # requests coming from the client
+    def client_query_page(self, socket_handler, msg):
+        self.node.query_page(protocol.query_page(msg['pubkey'].decode('hex')))
+
+    def client_shout(self, socket_handler, msg):
+        self._transport.send(protocol.shout(msg))
 
     # messages coming from "the market"
     def on_node_peer(self, peer):
         response = {'type': 'peer', 'pubkey': peer._pub.encode('hex'), 'uri': peer._address}
-        self.queue_message(None, response)
+        self.send_to_client(None, response)
+
+    def on_node_page(self, page):
+        self.send_to_client(None, page)
 
     def on_node_message(self, *args):
         first = args[0]
         if isinstance(first, dict):
-            self.queue_message(None, first)
+            self.send_to_client(None, first)
         else:
             self._transport.log("can't format")
 
     # send a message
-    def queue_message(self, error, result):
+    def send_to_client(self, error, result):
         assert error is None or type(error) == str
         response = {
             "id": random.randint(0, 1000000),
@@ -62,16 +80,7 @@ class ProtocolHandler:
             return False
         params = request["params"]
         # Create callback handler to write response to the socket.
-        handler = self._handlers[command](socket_handler, request["id"], self._json_chan, self)
-        try:
-            params = handler.translate_arguments(params)
-        except Exception as exc:
-            logging.error("Bad parameters specified: %s", exc, exc_info=True)
-            return True
-        try:
-            handler.process(params)
-        except Exception as e:
-            handler.process_response(str(e), {})
+        handler = self._handlers[command](socket_handler, params)
         return True
 
 
@@ -105,7 +114,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def _check_request(self, request):
         return request.has_key("command") and request.has_key("id") and \
-            request.has_key("params") and type(request["params"]) == list
+            request.has_key("params") and type(request["params"]) == dict
+            #request.has_key("params") and type(request["params"]) == list
 
     def on_message(self, message):
         try:
