@@ -83,7 +83,8 @@ class Blockchain:
         # Continue on... Block seems fine...
         # Check prev hash is in the list.
         if not self._block_hash_exists(block.prev_hash):
-            print >> sys.stderr, "Previous block does not exist. Dropping block."
+            print >> sys.stderr, "Previous block does not exist. Re-processing later."
+            reactor.callLater(5, self.accept, block)
             return
         block.priority = height * 10**8 + offset
         if self._priority_exists(block.priority):
