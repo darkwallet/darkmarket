@@ -14,12 +14,12 @@ class Blockchain:
         self.blocks = []
         self.processor = []
         self.registry = {}
-        self.client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
         db = shelve.open("blockchain")
         try:
             self.blocks = db["chain"]
         except KeyError:
             pass
+        self.accept(db["newest"])
         db.close()
 
     def accept(self, block):
@@ -35,11 +35,6 @@ class Blockchain:
         if not block.complete:
             self.postpone(block)
             return
-        #### DEBUG ###################
-        db = shelve.open("blockchain")
-        db["newest"] = block
-        db.close()
-        ##############################
         print "Processing block...", block
         # check hash of keys + values matches root hash
         if not block.verify():
@@ -54,7 +49,9 @@ class Blockchain:
                 self.postpone(block)
                 return
             self._tx_fetched(block, tx)
-        self.client.fetch_transaction(block.header.tx_hash, tx_fetched)
+        if forge.client is None:
+            forge.client = obelisk.ObeliskOfLightClient("tcp://obelisk.unsystem.net:9091")
+        forge.client.fetch_transaction(block.header.tx_hash, tx_fetched)
 
     def _tx_fetched(self, block, tx):
         # Continuing on with block validation...
@@ -72,6 +69,8 @@ class Blockchain:
         # compare to list
         # remove all items higher from blocks and kv map
         # add to blockchain
+        print "Done!"
+        return
         db = shelve.open("blockchain")
         db["chain"] = self.blocks
         db.close()
