@@ -1,6 +1,8 @@
 from protocol import shout, page, query_page
 from reputation import Reputation
 from orders import Orders
+import sys
+import json
 
 
 class Market(object):
@@ -33,11 +35,14 @@ class Market(object):
         transport.send(shout({'text': 'xxxxx'}))
 
     def load_page(self):
-        f = open('shop/myshop.txt')
-        data = f.read()
-        f.close()
-        self.mypage = data
-        self.signature = self._transport._myself.sign(data)
+        with open(sys.argv[1]) as f:
+            data = json.loads(f.read())
+        assert "desc" in data
+        nickname = data["nickname"]
+        desc = data["desc"]
+        tagline = "%s: %s" % (nickname, desc)
+        self.mypage = tagline
+        self.signature = self._transport._myself.sign(tagline)
 
     def query_page(self, pubkey):
         self._transport.send(query_page(pubkey))
