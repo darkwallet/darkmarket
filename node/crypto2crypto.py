@@ -6,7 +6,7 @@ from p2p import PeerConnection, TransportLayer
 from multiprocessing import Process
 import traceback
 
-from protocol import hello
+from protocol import hello, response_pubkey
 
 if len(sys.argv) < 2:
     print >> sys.stderr, "Error, you need the filename of your crypto stuff."
@@ -15,7 +15,12 @@ if len(sys.argv) < 2:
 def load_crypto_details():
     with open(sys.argv[1]) as f:
         data = json.loads(f.read())
-    return data["nickname"], data["secret"], data["pubkey"]
+    assert "nickname" in data
+    assert "secret" in data
+    assert "pubkey" in data
+    assert len(data["secret"]) == 2 * 32
+    assert len(data["pubkey"]) == 2 * 33
+    return data["nickname"], data["secret"].decode("hex"), data["pubkey"].decode("hex")
 
 NICKNAME, SECRET, PUBKEY = load_crypto_details()
 
@@ -48,6 +53,12 @@ class CryptoTransportLayer(TransportLayer):
             if peer._pub:
                 peers[uri] = peer._pub.encode('hex')
         return {'uri': self._uri, 'pub': self._myself.get_pubkey().encode('hex'), 'peers': peers}
+
+    def respond_pubkey_if_mine(self, ident_pubkey):
+        if ident_pubkey != PUBKEY:
+            print "Not my ident."
+            return
+        self._transport.send(response_pubkey(self._myself.get_pubkey()))
 
     def create_peer(self, uri, pub):
         if pub:

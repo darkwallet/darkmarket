@@ -69,6 +69,7 @@ class ProtocolHandler:
             self.send_to_client("Not found!", None)
             return
         print "Found key:", key.encode("hex")
+        self._transport.send(protocol.negotiate_pubkey(key))
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))

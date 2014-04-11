@@ -22,6 +22,8 @@ class Market(object):
         transport.add_callback('peer', self.on_peer)
         transport.add_callback('query_page', self.on_query_page)
         transport.add_callback('page', self.on_page)
+        transport.add_callback('negotiate_pubkey', self.on_negotiate_pubkey)
+        transport.add_callback('response_pubkey', self.on_response_pubkey)
 
         self.load_page()
 
@@ -52,4 +54,15 @@ class Market(object):
 
     def on_peer(self, peer):
         self._transport.log("[market] new peer")
+
+    def on_negotiate_pubkey(self, ident_pubkey):
+        self._transport.log("[market] asking my real pubkey")
+        assert "ident_pubkey" in ident_pubkey
+        ident_pubkey = ident_pubkey['ident_pubkey'].decode("hex")
+        self._transport.respond_pubkey_if_mine(ident_pubkey)
+
+    def on_response_pubkey(self, response):
+        self._transport.log("[market] got a pubkey!")
+        assert "pubkey" in response
+        pubkey = response["pubkey"].decode("hex")
 

@@ -37,3 +37,15 @@ def query_page(pubkey):
     data['type'] = 'query_page'
     data['pubkey'] = pubkey.encode('hex')
     return data
+
+def negotiate_pubkey(ident_pubkey):
+    data = {}
+    data['type'] = 'negotiate_pubkey'
+    data['ident_pubkey'] = ident_pubkey.encode("hex")
+    return data
+
+def response_pubkey(pubkey):
+    data = {}
+    data['type'] = "response_pubkey"
+    data['pubkey'] = pubkey.encode("hex")
+    return data
