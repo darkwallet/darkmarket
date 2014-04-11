@@ -99,7 +99,7 @@ def generate_signature_hash(parent_tx, input_index, script_code):
         input.script = ""
     tx.inputs[input_index].script = script_code
     raw_tx = tx.serialize() + "\x01\x00\x00\x00"
-    return obelisk.Hash(raw_tx)[::-1]
+    return obelisk.Hash(raw_tx)
 
 class Escrow:
 
