@@ -16,23 +16,6 @@ class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.redirect("/html/index.html")
 
-class NickHandler(tornado.web.RequestHandler):
-    def initialize(self, node):
-        self.node = node
-
-    def get(self, nick):
-        self.write("todo: Show user content for {nick}".format(nick=nick))
-        self.node.send_get_page(nick)
-
-
-class MessageHandler(tornado.web.RequestHandler):
-    def initialize(self, node):
-        self.node = node
-
-    def get(self):
-        self.write("todo: Show all incoming messages")
-
-
 class MarketApplication(tornado.web.Application):
 
     def __init__(self):
@@ -44,9 +27,7 @@ class MarketApplication(tornado.web.Application):
         handlers = [
             (r"/", MainHandler),
             (r"/main", MainHandler),
-            (r"/nick/(.*)", NickHandler, dict(node=self.market)),
             (r"/html/(.*)", tornado.web.StaticFileHandler, {'path': './html'}),
-            (r"/mail", MessageHandler, dict(node=self.market)),
             (r"/ws", WebSocketHandler, dict(transport=self.transport, node=self.market))
         ]
         tornado.web.Application.__init__(self, handlers, **settings)

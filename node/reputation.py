@@ -54,16 +54,16 @@ class Reputation(object):
     def parse_review(self, msg):
         pubkey = msg['pubkey'].decode('hex')
         subject = msg['subject'].decode('hex')
-        signature = msg['sig']
+        signature = msg['sig'].decode('hex')
         text = msg['text']
         rating = msg['rating']
 
         # check the signature
-        valid = ECC(pubkey=pubkey).verify(signature, self._build_review(subject, text, rating))
+        valid = ECC(pubkey=pubkey).verify(signature, self._build_review(subject, str(text), rating))
         
         if valid:
             newreview = review(pubkey, subject, signature, text, rating)
-            self._reviews[pubkey] = newreview
+            self._reviews[pubkey].append(newreview)
         else:
             self._transport.log("[reputation] Invalid review!")
 
@@ -76,7 +76,7 @@ class Reputation(object):
 
     # query reviews has arrived
     def on_query_reputation(self, msg):
-        pubkey = msg['pubkey']
+        pubkey = msg['pubkey'].decode('hex')
         if pubkey in self._reviews:
             self._transport.send(reputation(pubkey, self._reviews[pubkey]))
 

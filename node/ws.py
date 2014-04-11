@@ -5,6 +5,7 @@ import json
 import tornado.ioloop
 import random
 import protocol
+import lookup
 
 class ProtocolHandler:
     def __init__(self, transport, node, handler):
@@ -21,8 +22,11 @@ class ProtocolHandler:
         self._handlers = {
             "query_page":          self.client_query_page,
             "review":          self.client_review,
+            "search":          self.client_search,
             "shout":          self.client_shout
         }
+
+        self.query_ident = None
 
     def send_opening(self):
         peers = []
@@ -43,13 +47,29 @@ class ProtocolHandler:
 
     # requests coming from the client
     def client_query_page(self, socket_handler, msg):
-        self.node.query_page(msg['pubkey'].decode('hex'))
+        pubkey = msg['pubkey'].decode('hex')
+        self.node.query_page(pubkey)
+        self.node.reputation.query_reputation(pubkey)
 
     def client_review(self, socket_handler, msg):
         pubkey = msg['pubkey'].decode('hex')
         text = msg['text']
         rating = msg['rating']
         self.node.reputation.create_review(pubkey, text, rating)
+
+    def client_search(self, socket_handler, msg):
+        print "begin"
+        if self.query_ident is None:
+            print "Initializing"
+            self.query_ident = lookup.QueryIdent()
+        print "search", msg
+        #key = self.query_ident.lookup(str(msg["text"]))
+        key = "hello"
+        print "Done."
+        if key is None:
+            print "Key not found!"
+            return
+        print "key", key.encode("hex")
 
     def client_shout(self, socket_handler, msg):
         self._transport.send(protocol.shout(msg))
