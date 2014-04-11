@@ -10,3 +10,17 @@ def ok():
 def shout(data):
     data['type'] = 'shout'
     return data
+
+def reputation(pubkey, reviews):
+    data = {}
+    data['type'] = 'reputation'
+    data['pubkey'] = pubkey.encode('hex')
+    data['reviews'] = reviews
+    return data
+
+def query_reputation(pubkey):
+    data = {}
+    data['type'] = 'query_reputation'
+    data['pubkey'] = pubkey.encode('hex')
+    return data
+

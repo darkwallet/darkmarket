@@ -16,7 +16,10 @@ DEFAULT_PORT=12345
 
 # Get some command line pars
 SEED_URI = False
-MY_IP = sys.argv[1]
+if len(sys.argv) > 1:
+    MY_IP = sys.argv[1]
+else:
+    MY_IP = "127.0.0.1"
 if len(sys.argv) > 2:
     SEED_URI = sys.argv[2] # like tcp://127.0.0.1:12345
 else:
@@ -55,7 +58,7 @@ class PeerConnection(object):
 
     def closed(self, *args):
         print " - peer disconnected"
- 
+
 # Transport layer manages a list of peers
 class TransportLayer(object):
     def __init__(self, port=DEFAULT_PORT):
@@ -110,12 +113,12 @@ class TransportLayer(object):
 
     def send(self, data):
         self.log("sending %s..." % data.keys())
-        serialized = json.dumps(data)
         for peer in self._peers.values():
             try:
                 if peer._pub:
-                    peer.send(serialized)
+                    peer.send(data)
                 else:
+                    serialized = json.dumps(data)
                     peer.send_raw(serialized)
             except:
                 print "error sending over peer!"

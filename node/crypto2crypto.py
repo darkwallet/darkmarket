@@ -73,13 +73,13 @@ class CryptoTransportLayer(TransportLayer):
         try:
             msg = json.loads(serialized)
             self.log("receive [%s]" % msg.get('type', 'unknown'))
-        except:
+        except ValueError:
             try:
-                msg = self._myself.decrypt(serialized)
-                msg = json.loads(msg)
+                msg = json.loads(self._myself.decrypt(serialized))
                 self.log("decrypted [%s]" % msg.get('type', 'unknown'))
             except:
-                self.log("incorrect msg ! %s..." % serialized)
+                #self.log("incorrect msg ! %s..." % serialized)
+                self.log("incorrect msg !")
                 traceback.print_exc()
                 return
 

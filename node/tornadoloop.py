@@ -9,23 +9,28 @@ ioloop.install()
 
 from crypto2crypto import CryptoTransportLayer
 from market import Market
+from ws import WebSocketHandler
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.write("Hello, world")
+        f = open('html/index.html')
+        data = f.read()
+        f.close()
+        self.write(data)
 
 class NickHandler(tornado.web.RequestHandler):
-    def initialize(self, transport):
-        self.transport = transport
+    def initialize(self, node):
+        self.node = node
 
     def get(self, nick):
         self.write("todo: Show user content for {nick}".format(nick=nick))
+        self.node.send_get_page(nick)
 
 
 class MessageHandler(tornado.web.RequestHandler):
-    def initialize(self, transport):
-        self.transport = transport
+    def initialize(self, node):
+        self.node = node
 
     def get(self):
         self.write("todo: Show all incoming messages")
@@ -39,9 +44,10 @@ class MarketApplication(tornado.web.Application):
         self.transport.join_network()
         self.market = Market(self.transport)
         handlers = [
-            (r"/foo", MainHandler),
-            (r"/nick/(.*)", NickHandler, dict(transport=self.transport)),
-            (r"/mail", MessageHandler, dict(transport=self.transport))
+            (r"/main", MainHandler),
+            (r"/nick/(.*)", NickHandler, dict(node=self.market)),
+            (r"/mail", MessageHandler, dict(node=self.market)),
+            (r"/ws", WebSocketHandler, dict(node=self.market))
         ]
         tornado.web.Application.__init__(self, handlers, **settings)
 
