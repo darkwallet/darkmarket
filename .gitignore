@@ -1,0 +1,12 @@
+# Python
+*.pyc
+
+# Vagrant
+.Vagrantfile.swp
+.vagrant/
+
+# App
+*.log
+
+# Vim
+*.swp
